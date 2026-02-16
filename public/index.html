@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ScopeClimb - Scope Creep Prevention</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<style>
+body {
+    margin: 0;
+    font-family: 'Inter', sans-serif;
+    background: #0f172a;
+    color: #e2e8f0;
+}
+
+header {
+    background: linear-gradient(90deg, #3b82f6, #8b5cf6);
+    padding: 20px;
+    text-align: center;
+    font-size: 24px;
+    font-weight: 700;
+}
+
+.container {
+    padding: 30px;
+    max-width: 1000px;
+    margin: auto;
+}
+
+.card {
+    background: #1e293b;
+    padding: 20px;
+    border-radius: 14px;
+    margin-bottom: 20px;
+}
+
+input, select, button {
+    padding: 10px;
+    margin: 5px 0;
+    border-radius: 8px;
+    border: none;
+    font-family: inherit;
+}
+
+input, select {
+    width: 100%;
+}
+
+button {
+    background: linear-gradient(90deg, #3b82f6, #8b5cf6);
+    color: white;
+    cursor: pointer;
+    font-weight: 600;
+}
+
+button:hover {
+    opacity: 0.9;
+}
+
+.feature-item {
+    background: #334155;
+    padding: 10px;
+    margin: 5px 0;
+    border-radius: 8px;
+}
+
+.progress-bar {
+    height: 20px;
+    background: #334155;
+    border-radius: 10px;
+    overflow: hidden;
+}
+
+.progress-fill {
+    height: 100%;
+    background: #22c55e;
+    width: 0%;
+    transition: 0.3s;
+}
+
+.risk-safe { color: #22c55e; font-weight: 600; }
+.risk-warning { color: #facc15; font-weight: 600; }
+.risk-danger { color: #ef4444; font-weight: 600; }
+</style>
+</head>
+
+<body>
+
+<header>ScopeClimb - Prevent Scope Creep</header>
+
+<div class="container">
+
+<div class="card">
+<h3>Create Project</h3>
+<input type="text" id="projectName" placeholder="Project Name">
+<input type="text" id="projectGoal" maxlength="120" placeholder="One-sentence Project Goal (Max 120 chars)">
+<input type="date" id="startDate">
+<input type="date" id="endDate">
+<button onclick="createProject()">Create Project</button>
+</div>
+
+<div class="card">
+<h3>Add Feature</h3>
+<input type="text" id="featureTitle" placeholder="Feature Title">
+<select id="featureType">
+<option value="Must">Must Have</option>
+<option value="Should">Should Have</option>
+<option value="Could">Could Have</option>
+</select>
+<button onclick="addFeature()">Add Feature</button>
+</div>
+
+<div class="card">
+<h3>Feature List</h3>
+<div id="featureList"></div>
+</div>
+
+<div class="card">
+<h3>Project Progress</h3>
+<div class="progress-bar">
+<div class="progress-fill" id="progressFill"></div>
+</div>
+<p id="progressText">0% Completed</p>
+</div>
+
+<div class="card">
+<h3>Scope Risk Status</h3>
+<p id="riskStatus" class="risk-safe">Safe Zone</p>
+</div>
+
+<div class="card">
+<h3>Feature Distribution</h3>
+<canvas id="featureChart"></canvas>
+</div>
+
+</div>
+
+<script>
+let features = [];
+let mustCount = 0;
+let projectCreated = false;
+
+function createProject() {
+    const name = document.getElementById("projectName").value;
+    const goal = document.getElementById("projectGoal").value;
+
+    if (!name || !goal) {
+        alert("Project Name and Goal are required.");
+        return;
+    }
+
+    projectCreated = true;
+    alert("Project Created Successfully!");
+}
+
+function addFeature() {
+    if (!projectCreated) {
+        alert("Create a project first.");
+        return;
+    }
+
+    const title = document.getElementById("featureTitle").value;
+    const type = document.getElementById("featureType").value;
+
+    if (!title) {
+        alert("Feature title required.");
+        return;
+    }
+
+    if (type === "Must" && mustCount >= 5) {
+        alert("Maximum 5 Must Have features allowed.");
+        return;
+    }
+
+    features.push({ title, type, status: "Not Started" });
+
+    if (type === "Must") mustCount++;
+
+    renderFeatures();
+    updateProgress();
+    updateRisk();
+    updateChart();
+
+    document.getElementById("featureTitle").value = "";
+}
+
+function renderFeatures() {
+    const list = document.getElementById("featureList");
+    list.innerHTML = "";
+
+    features.forEach((f, index) => {
+        const div = document.createElement("div");
+        div.className = "feature-item";
+        div.innerHTML = `
+            ${f.title} (${f.type}) - ${f.status}
+            <button onclick="completeFeature(${index})">Mark Done</button>
+        `;
+        list.appendChild(div);
+    });
+}
+
+function completeFeature(index) {
+    features[index].status = "Done";
+    renderFeatures();
+    updateProgress();
+    updateRisk();
+}
+
+function updateProgress() {
+    if (features.length === 0) return;
+
+    const completed = features.filter(f => f.status === "Done").length;
+    const percent = Math.round((completed / features.length) * 100);
+
+    document.getElementById("progressFill").style.width = percent + "%";
+    document.getElementById("progressText").innerText = percent + "% Completed";
+}
+
+function updateRisk() {
+    const riskElement = document.getElementById("riskStatus");
+
+    if (mustCount >= 5) {
+        riskElement.innerText = "Danger Zone - Too Many Must Features";
+        riskElement.className = "risk-danger";
+    } else if (features.length > 10) {
+        riskElement.innerText = "Caution Zone - Feature Overload";
+        riskElement.className = "risk-warning";
+    } else {
+        riskElement.innerText = "Safe Zone";
+        riskElement.className = "risk-safe";
+    }
+}
+
+let chart;
+
+function updateChart() {
+    const must = features.filter(f => f.type === "Must").length;
+    const should = features.filter(f => f.type === "Should").length;
+    const could = features.filter(f => f.type === "Could").length;
+
+    const ctx = document.getElementById('featureChart').getContext('2d');
+
+    if (chart) chart.destroy();
+
+    chart = new Chart(ctx, {
+        type: 'pie',
+        data: {
+            labels: ['Must', 'Should', 'Could'],
+            datasets: [{
+                data: [must, should, could],
+                backgroundColor: ['#ef4444', '#facc15', '#22c55e']
+            }]
+        }
+    });
+}
+</script>
+
+</body>
+</html>
